@@ -76,7 +76,7 @@ const Register = () => {
           </div>
           <div>
             <img src={email_icon} className="img_icon" alt='Email'/>
-            <input type="email" name="email" placeholder="Email" aria-label="Email" required className="input_field" onChange={(e) => setEmail(e.target.value)}/>
+            <input type="email" name="email" placeholder="email" aria-label="Email" required className="input_field" onChange={(e) => setEmail(e.target.value)}/>
           </div>
           <div className="input">
             <img src={password_icon} className="img_icon" alt='password'/>

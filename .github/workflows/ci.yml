@@ -10,7 +10,37 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  lint-javascript:
+    name: Lint JavaScript
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: server/frontend
+        run: npm ci --no-audit --no-fund
+      - name: Lint JavaScript source
+        working-directory: server/frontend
+        run: npx eslint src ../database --ext .js,.jsx --quiet
+      - name: Build React frontend
+        working-directory: server/frontend
+        env:
+          CI: 'false'
+        run: npm run build
+      - name: Save built frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: server/frontend/build
+
+  lint-python:
+    name: Lint Python
     runs-on: ubuntu-latest
     services:
       mongo:
@@ -30,23 +60,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: server/frontend/package-lock.json
       - name: Install Python dependencies
         run: pip install -r server/requirements.txt -r server/djangoapp/microservices/requirements.txt ruff
       - name: Lint all Python source
         run: ruff check server scripts --select E9,F63,F7,F82 --exclude node_modules
-      - name: Install frontend dependencies
-        working-directory: server/frontend
-        run: npm ci --no-audit --no-fund
-      - name: Lint JavaScript source
-        working-directory: server/frontend
-        run: npx eslint src ../database --ext .js,.jsx --quiet
-      - name: Build React frontend
-        working-directory: server/frontend
-        env:
-          CI: 'false'
-        run: npm run build
       - name: Check Django and migrations
         working-directory: server
         run: |
@@ -69,11 +86,9 @@ jobs:
           curl --retry 20 --retry-connrefused --retry-delay 2 --fail http://127.0.0.1:8000/
       - name: Verify live microservice integration and capture API output
         run: python scripts/capture_api_evidence.py --output api-evidence
-      - name: Save built frontend and API evidence
+      - name: Save API evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-and-api-evidence
-          path: |
-            server/frontend/build
-            api-evidence
+          name: api-evidence
+          path: api-evidence
