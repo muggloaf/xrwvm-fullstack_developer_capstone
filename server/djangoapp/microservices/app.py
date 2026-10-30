@@ -1,8 +1,11 @@
 from flask import Flask
 from nltk.sentiment import SentimentIntensityAnalyzer
+import nltk
+from pathlib import Path
 import json
 app = Flask("Sentiment Analyzer")
 
+nltk.data.path.insert(0, str(Path(__file__).resolve().parent))
 sia = SentimentIntensityAnalyzer()
 
 
@@ -12,7 +15,7 @@ def home():
     Use /analyze/text to get the sentiment"
 
 
-@app.get('/analyze/<input_txt>')
+@app.get('/analyze/<path:input_txt>')
 def analyze_sentiment(input_txt):
 
     scores = sia.polarity_scores(input_txt)
@@ -32,4 +35,4 @@ def analyze_sentiment(input_txt):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)

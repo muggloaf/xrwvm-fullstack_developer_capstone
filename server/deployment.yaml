@@ -20,9 +20,14 @@ spec:
         run: dealership
     spec:
       containers:
-      - image: us.icr.io/sn-labs-djleamen/dealership:latest
+      - image: us.icr.io/YOUR_SN_LABS_NAMESPACE/dealership:latest
         imagePullPolicy: Always
         name: dealership
+        env:
+        - name: backend_url
+          value: "http://dealership-api:3030"
+        - name: sentiment_analyzer_url
+          value: "https://YOUR_CODE_ENGINE_HOST/"
         ports:
         - containerPort: 8000
           protocol: TCP

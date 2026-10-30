@@ -1,0 +1,78 @@
+name: Capstone CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping:1}).ok'"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/frontend/package-lock.json
+      - name: Install Python dependencies
+        run: pip install -r server/requirements.txt -r server/djangoapp/microservices/requirements.txt ruff
+      - name: Lint all Python source
+        run: ruff check server --select E9,F63,F7,F82 --exclude node_modules
+      - name: Install frontend dependencies
+        working-directory: server/frontend
+        run: npm ci --no-audit --no-fund
+      - name: Lint JavaScript source
+        working-directory: server/frontend
+        run: npx eslint src ../database --ext .js,.jsx --quiet
+      - name: Build React frontend
+        working-directory: server/frontend
+        env:
+          CI: 'false'
+        run: npm run build
+      - name: Check Django and migrations
+        working-directory: server
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+          python manage.py migrate --noinput
+      - name: Test authentication and proxy behavior
+        working-directory: server
+        run: python manage.py test djangoapp
+      - name: Install and start backend services
+        env:
+          MONGO_URL: mongodb://localhost:27017/
+        run: |
+          npm install --prefix server/database --no-audit --no-fund
+          node server/database/app.js > /tmp/backend.log 2>&1 &
+          (cd server/djangoapp/microservices && flask run --host 127.0.0.1 --port 5050 > /tmp/sentiment.log 2>&1) &
+          python server/manage.py runserver --noreload > /tmp/django.log 2>&1 &
+          curl --retry 20 --retry-connrefused --retry-delay 2 --fail http://127.0.0.1:3030/
+          curl --retry 20 --retry-connrefused --retry-delay 2 --fail http://127.0.0.1:5050/
+          curl --retry 20 --retry-connrefused --retry-delay 2 --fail http://127.0.0.1:8000/
+      - name: Verify live microservice integration and capture API output
+        run: python scripts/capture_api_evidence.py --output api-evidence
+      - name: Save built frontend and API evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-and-api-evidence
+          path: |
+            server/frontend/build
+            api-evidence

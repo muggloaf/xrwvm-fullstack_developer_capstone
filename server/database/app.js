@@ -2,10 +2,11 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const fs = require('fs');
+const path = require('path');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const app = express();
-const port = 3030;
+const port = process.env.PORT || 3030;
 
 // Rate limiter for fetching a single dealer by ID
 const fetchDealerLimiter = rateLimit({
@@ -16,10 +17,8 @@ const fetchDealerLimiter = rateLimit({
 app.use(cors());
 app.use(require('body-parser').urlencoded({ extended: false }));
 
-const reviews_data = JSON.parse(fs.readFileSync("reviews.json", 'utf8'));
-const dealerships_data = JSON.parse(fs.readFileSync("dealerships.json", 'utf8'));
-
-mongoose.connect("mongodb://mongo_db:27017/",{'dbName':'dealershipsDB'});
+const reviews_data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/reviews.json'), 'utf8'));
+const dealerships_data = JSON.parse(fs.readFileSync(path.join(__dirname, 'data/dealerships.json'), 'utf8'));
 
 const reviewLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -53,16 +52,18 @@ const Reviews = require('./review');
 
 const Dealerships = require('./dealership');
 
-try {
-  Reviews.deleteMany({}).then(()=>{
-    Reviews.insertMany(reviews_data.reviews);
+// Seed only an empty database. Restarting must preserve submitted reviews.
+async function start() {
+  await mongoose.connect(process.env.MONGO_URL || 'mongodb://mongo_db:27017/', {
+    dbName: 'dealershipsDB',
   });
-  Dealerships.deleteMany({}).then(()=>{
-    Dealerships.insertMany(dealerships_data.dealerships);
-  });
-  
-} catch (error) {
-  res.status(500).json({ error: 'Error fetching documents' });
+  if (await Reviews.countDocuments() === 0) {
+    await Reviews.insertMany(reviews_data.reviews);
+  }
+  if (await Dealerships.countDocuments() === 0) {
+    await Dealerships.insertMany(dealerships_data.dealerships);
+  }
+  app.listen(port, () => console.log(`Server is running on port ${port}`));
 }
 
 
@@ -122,12 +123,12 @@ app.get('/fetchDealer/:id', fetchDealerLimiter, async (req, res) => {
 });
 
 //Express route to insert review
-app.post('/insert_review', reviewLimiter, express.raw({ type: '*/*' }), async (req, res) => {
-  const data = JSON.parse(req.body);
-  const documents = await Reviews.find().sort( { id: -1 } );
-  let new_id = documents[0].id+1;
-
-  const review = new Reviews({
+app.post('/insert_review', reviewLimiter, express.json(), async (req, res) => {
+  try {
+    const data = req.body;
+    const latest = await Reviews.findOne().sort({ id: -1 });
+    const new_id = latest ? latest.id + 1 : 1;
+    const review = new Reviews({
 		"id": new_id,
 		"name": data.name,
 		"dealership": data.dealership,
@@ -139,7 +140,6 @@ app.post('/insert_review', reviewLimiter, express.raw({ type: '*/*' }), async (r
 		"car_year": data.car_year,
 	});
 
-  try {
     const savedReview = await review.save();
     res.json(savedReview);
   } catch (error) {
@@ -148,7 +148,8 @@ app.post('/insert_review', reviewLimiter, express.raw({ type: '*/*' }), async (r
   }
 });
 
-// Start the Express server
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+// Do not accept requests until MongoDB and seed data are ready.
+start().catch(error => {
+  console.error('Failed to start dealership API:', error.message);
+  process.exitCode = 1;
 });

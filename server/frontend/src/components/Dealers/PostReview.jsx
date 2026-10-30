@@ -32,9 +32,9 @@ const PostReview = () => {
       return;
     }
 
-    let model_split = model.split(" ");
-    let make_chosen = model_split[0];
-    let model_chosen = model_split[1];
+    const chosen = carmodels[Number(model)];
+    let make_chosen = chosen.CarMake;
+    let model_chosen = chosen.CarModel;
 
     let jsoninput = JSON.stringify({
       "name": name,
@@ -95,22 +95,22 @@ const PostReview = () => {
       <Header/>
       <div  style={{margin:"5%"}}>
       <h1 style={{color:"darkblue"}}>{dealer.full_name}</h1>
-      <textarea id='review' cols='50' rows='7' onChange={(e) => setReview(e.target.value)}></textarea>
+      <textarea id='review' aria-label="Review" cols='50' rows='7' onChange={(e) => setReview(e.target.value)}></textarea>
       <div className='input_field'>
-      Purchase Date <input type="date" onChange={(e) => setDate(e.target.value)}/>
+      Purchase Date <input type="date" aria-label="Purchase Date" onChange={(e) => setDate(e.target.value)}/>
       </div>
       <div className='input_field'>
       Car Make 
-      <select name="cars" id="cars" onChange={(e) => setModel(e.target.value)}>
-      <option value="" selected disabled hidden>Choose Car Make and Model</option>
-      {carmodels.map(carmodel => (
-          <option value={carmodel.CarMake+" "+carmodel.CarModel}>{carmodel.CarMake} {carmodel.CarModel}</option>
+      <select name="cars" id="cars" aria-label="Car Make and Model" defaultValue="" onChange={(e) => setModel(e.target.value)}>
+      <option value="" disabled hidden>Choose Car Make and Model</option>
+      {carmodels.map((carmodel, index) => (
+          <option key={index} value={index}>{carmodel.CarMake} {carmodel.CarModel}</option>
       ))}
       </select>        
       </div >
 
       <div className='input_field'>
-      Car Year <input type="int" onChange={(e) => setYear(e.target.value)} max={2023} min={2015}/>
+      Car Year <input type="number" aria-label="Car Year" onChange={(e) => setYear(e.target.value)} max={2026} min={2015}/>
       </div>
 
       <div>

@@ -7,6 +7,8 @@ from django.http import JsonResponse
 from django.contrib.auth import login, authenticate
 import logging
 import json
+from requests.exceptions import RequestException
+from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from .models import CarMake, CarModel
 from .populate import initiate
@@ -95,7 +97,12 @@ def get_dealerships(request, state="All"):
         endpoint = "/fetchDealers"
     else:
         endpoint = "/fetchDealers/" + state
-    dealerships = get_request(endpoint)
+    try:
+        dealerships = get_request(endpoint)
+    except (RequestException, ValueError):
+        return JsonResponse({"status": 502,
+                             "message": "Dealer service unavailable"},
+                            status=502)
     return JsonResponse({"status": 200, "dealers": dealerships})
 
 
@@ -104,14 +111,15 @@ def get_dealer_reviews(request, dealer_id):
     # if dealer id has been provided
     if dealer_id:
         endpoint = "/fetchReviews/dealer/" + str(dealer_id)
-        reviews = get_request(endpoint)
-        for review_detail in reviews:
-            response = analyze_review_sentiments(review_detail['review'])
-            print(response)
-            if response:
+        try:
+            reviews = get_request(endpoint)
+            for review_detail in reviews:
+                response = analyze_review_sentiments(review_detail['review'])
                 review_detail['sentiment'] = response['sentiment']
-            else:
-                review_detail['sentiment'] = 'neutral'
+        except (RequestException, ValueError, KeyError):
+            return JsonResponse({"status": 502,
+                                 "message": "Review service unavailable"},
+                                status=502)
         return JsonResponse({"status": 200, "reviews": reviews})
     else:
         return JsonResponse({"status": 400, "message": "Bad Request"})
@@ -121,7 +129,12 @@ def get_dealer_reviews(request, dealer_id):
 def get_dealer_details(request, dealer_id):
     if dealer_id:
         endpoint = "/fetchDealer/" + str(dealer_id)
-        dealership = get_request(endpoint)
+        try:
+            dealership = get_request(endpoint)
+        except (RequestException, ValueError):
+            return JsonResponse({"status": 502,
+                                 "message": "Dealer service unavailable"},
+                                status=502)
         return JsonResponse({"status": 200, "dealer": dealership})
     else:
         return JsonResponse({"status": 400, "message": "Bad Request"})
@@ -129,17 +142,24 @@ def get_dealer_details(request, dealer_id):
 
 # Create a `add_review` view to submit a review
 @csrf_exempt
+@require_POST
 def add_review(request):
     if not request.user.is_anonymous:
-        data = json.loads(request.body)
+        try:
+            data = json.loads(request.body)
+        except (ValueError, UnicodeDecodeError):
+            return JsonResponse({"status": 400,
+                                 "message": "Invalid JSON"}, status=400)
+        data['name'] = request.user.get_full_name() or request.user.username
         try:
             post_review(data)
             return JsonResponse({"status": 200})
-        except Exception as err:
+        except (RequestException, ValueError):
             # Log the full exception server-side without exposing details to the client
             logger.exception("Error in posting review")
             return JsonResponse(
-                {"status": 401,
-                 "message": "Error in posting review"})
+                {"status": 502,
+                 "message": "Error in posting review"}, status=502)
     else:
-        return JsonResponse({"status": 403, "message": "Unauthorized"})
+        return JsonResponse({"status": 403, "message": "Unauthorized"},
+                            status=403)

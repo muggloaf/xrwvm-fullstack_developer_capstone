@@ -22,22 +22,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY =\
-    'django-insecure-ccow$tz_=9%dxu4(0%^(z%nx32#s@(zt9$ih@)5l54yny)wm-0'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'local-capstone-development-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    'djleamen-8000.theianext-0-labs-prod-misc-tools-us-east-0.'
-    'proxy.cognitiveclass.ai'
-]
-CSRF_TRUSTED_ORIGINS = [
-    'https://djleamen-8000.theianext-0-labs-prod-misc-tools-us-east-0.'
-    'proxy.cognitiveclass.ai'
-]
+ALLOWED_HOSTS = os.getenv(
+    'DJANGO_ALLOWED_HOSTS',
+    'localhost,127.0.0.1,.proxy.cognitiveclass.ai,.labs.skills.network'
+).split(',')
+CSRF_TRUSTED_ORIGINS = [origin for origin in os.getenv(
+    'DJANGO_CSRF_TRUSTED_ORIGINS',
+    'https://*.proxy.cognitiveclass.ai,https://*.labs.skills.network'
+).split(',') if origin]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
@@ -57,6 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.common.CommonMiddleware',
