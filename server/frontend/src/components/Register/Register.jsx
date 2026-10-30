@@ -39,14 +39,13 @@ const Register = () => {
     });
 
     const json = await res.json();
-    if (json.status) {
+    if (json.status === "Authenticated") {
       // Save username in session and reload home
         sessionStorage.setItem('username', json.userName);
         window.location.href = window.location.origin;
     }
     else if (json.error === "Already Registered") {
       alert("The user with same username is already registered");
-      window.location.href = window.location.origin;
     }
   };
 
@@ -65,23 +64,23 @@ const Register = () => {
         <div className="inputs">
           <div className="input">
             <img src={user_icon} className="img_icon" alt='Username'/>
-            <input type="text"  name="username" placeholder="Username" className="input_field" onChange={(e) => setUserName(e.target.value)}/>
+            <input type="text" name="username" placeholder="Username" aria-label="Username" required className="input_field" onChange={(e) => setUserName(e.target.value)}/>
           </div>
           <div>
             <img src={user_icon} className="img_icon" alt='First Name'/>
-            <input type="text"  name="first_name" placeholder="First Name" className="input_field" onChange={(e) => setFirstName(e.target.value)}/>
+            <input type="text" name="first_name" placeholder="First Name" aria-label="First Name" required className="input_field" onChange={(e) => setFirstName(e.target.value)}/>
           </div>
           <div>
             <img src={user_icon} className="img_icon" alt='Last Name'/>
-            <input type="text"  name="last_name" placeholder="Last Name" className="input_field" onChange={(e) => setlastName(e.target.value)}/>
+            <input type="text" name="last_name" placeholder="Last Name" aria-label="Last Name" required className="input_field" onChange={(e) => setlastName(e.target.value)}/>
           </div>
           <div>
             <img src={email_icon} className="img_icon" alt='Email'/>
-            <input type="email"  name="email" placeholder="email" className="input_field" onChange={(e) => setEmail(e.target.value)}/>
+            <input type="email" name="email" placeholder="Email" aria-label="Email" required className="input_field" onChange={(e) => setEmail(e.target.value)}/>
           </div>
           <div className="input">
             <img src={password_icon} className="img_icon" alt='password'/>
-            <input name="psw" type="password"  placeholder="Password" className="input_field" onChange={(e) => setPassword(e.target.value)}/>
+            <input name="psw" type="password" placeholder="Password" aria-label="Password" required className="input_field" onChange={(e) => setPassword(e.target.value)}/>
           </div>
         </div>
         <div className="submit_panel">
