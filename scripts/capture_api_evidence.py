@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import shlex
 import subprocess
+import requests
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--backend', default='http://127.0.0.1:3030')
@@ -39,9 +40,33 @@ for name, url in tasks:
 
 # Confirm Django proxies connect to both real upstream services.
 for endpoint, key in [('get_dealers', 'dealers'), ('dealer/1', 'dealer'),
-                      ('reviews/dealer/1', 'reviews')]:
+                      ('reviews/dealer/15', 'reviews')]:
     result = subprocess.run(
         ['curl', '--fail', '-sS', args.django + '/djangoapp/' + endpoint],
         capture_output=True, text=True, check=True)
     assert json.loads(result.stdout)[key]
 print('Django dealer and sentiment-enriched review proxies passed')
+
+session = requests.Session()
+account = {'userName': 'integration_driver', 'password': 'ci-demo-password',
+           'firstName': 'Integration', 'lastName': 'Driver',
+           'email': 'driver@example.com'}
+session.post(args.django + '/djangoapp/register', json=account, timeout=15)
+response = session.post(args.django + '/djangoapp/login', json=account,
+                        timeout=15)
+response.raise_for_status()
+assert response.json()['status'] == 'Authenticated'
+review = {'dealership': 1, 'review': 'Fantastic services', 'purchase': True,
+          'purchase_date': '2026-10-30', 'car_make': 'Toyota',
+          'car_model': 'Corolla', 'car_year': 2023}
+response = session.post(args.django + '/djangoapp/add_review', json=review,
+                        timeout=15)
+response.raise_for_status()
+assert response.json()['status'] == 200
+response = session.get(args.django + '/djangoapp/reviews/dealer/1', timeout=60)
+response.raise_for_status()
+assert any(item['review'] == 'Fantastic services' and
+           item['name'] == 'Integration Driver' and
+           item['sentiment'] == 'positive'
+           for item in response.json()['reviews'])
+print('Authenticated review submission and sentiment persistence passed')

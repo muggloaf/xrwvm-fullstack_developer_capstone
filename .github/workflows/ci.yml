@@ -35,7 +35,7 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r server/requirements.txt -r server/djangoapp/microservices/requirements.txt ruff
       - name: Lint all Python source
-        run: ruff check server --select E9,F63,F7,F82 --exclude node_modules
+        run: ruff check server scripts --select E9,F63,F7,F82 --exclude node_modules
       - name: Install frontend dependencies
         working-directory: server/frontend
         run: npm ci --no-audit --no-fund
@@ -70,6 +70,7 @@ jobs:
       - name: Verify live microservice integration and capture API output
         run: python scripts/capture_api_evidence.py --output api-evidence
       - name: Save built frontend and API evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: frontend-and-api-evidence
