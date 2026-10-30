@@ -30,7 +30,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     'localhost',
-    'https://djleamen-8000.theianext-0-labs-prod-misc-tools-us-east-0.'
+    '127.0.0.1',
+    'djleamen-8000.theianext-0-labs-prod-misc-tools-us-east-0.'
     'proxy.cognitiveclass.ai'
 ]
 CSRF_TRUSTED_ORIGINS = [
@@ -147,8 +148,8 @@ MEDIA_URL = '/media/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-STATICFILES_DIRS = [
+STATICFILES_DIRS = [directory for directory in [
     os.path.join(BASE_DIR, 'frontend/static'),
     os.path.join(BASE_DIR, 'frontend/build'),
     os.path.join(BASE_DIR, 'frontend/build/static'),
-]
+] if os.path.isdir(directory)]

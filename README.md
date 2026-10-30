@@ -1,6 +1,8 @@
 # xrwvm-fullstack_developer_capstone
 
-project name: car dealership portal
+Project name: fullstack_developer_capstone
+
+Car dealership portal for the IBM Full Stack Application Development Capstone Project.
 
 From IBM's Full Stack Application Development Capstone Project on Coursera
 
